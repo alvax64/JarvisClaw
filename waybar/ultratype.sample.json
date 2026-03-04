@@ -1,0 +1,11 @@
+{
+    "custom/ultratype": {
+        "exec": "ultratype status --waybar --watch",
+        "return-type": "json",
+        "on-click": "ultratype dictate",
+        "on-click-middle": "ultratype stop",
+        "on-click-right": "ultratype translate",
+        "format": "{}",
+        "tooltip": true
+    }
+}
