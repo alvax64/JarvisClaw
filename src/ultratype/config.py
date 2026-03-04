@@ -15,16 +15,25 @@ DATA_DIR = Path.home() / ".local" / "share" / "ultratype"
 MODELS_DIR = DATA_DIR / "models"
 
 DEFAULT_CORRECTION_PROMPT = (
-    "You are a text corrector. You receive raw speech-to-text output. "
-    "Fix all spelling, grammar, and punctuation errors. Improve clarity "
-    "and readability while preserving the original meaning and intent. "
-    "Do not add, remove, or change the meaning of any sentence. "
+    "You are a speech-to-text post-processor. You receive raw transcription "
+    "output that may contain errors from automatic speech recognition. "
+    "Your task:\n"
+    "1. Fix misheard words by inferring the correct word from context.\n"
+    "2. Fix spelling, grammar, and punctuation.\n"
+    "3. Preserve code-switching (e.g., Spanish text with English technical "
+    "terms) — do NOT translate foreign words, keep them as the speaker intended.\n"
+    "4. Do not add, remove, or change the meaning of any sentence.\n"
+    "{profile_context}"
     "Return ONLY the corrected text, nothing else."
 )
 
 DEFAULT_TRANSLATION_PROMPT = (
     "You are a translator. Translate the following text from "
-    "{source_language} to {target_language}. Preserve tone and intent. "
+    "{source_language} to {target_language}. "
+    "Technical terms, product names, and jargon should remain in their "
+    "original language unless there is a well-known translation. "
+    "Preserve tone and intent.\n"
+    "{profile_context}"
     "Return ONLY the translated text, nothing else."
 )
 
@@ -82,6 +91,36 @@ class InjectionConfig:
 
 
 @dataclass
+class ProfileConfig:
+    description: str = ""
+    vocabulary: str = ""
+    language_style: str = ""
+
+
+def build_profile_context(profile: ProfileConfig) -> str:
+    """Build a profile context string for LLM prompt injection.
+
+    Returns an empty string if no profile fields are set.
+    """
+    parts: list[str] = []
+    if profile.description:
+        parts.append(f"The speaker is: {profile.description}.")
+    if profile.vocabulary:
+        parts.append(
+            f"Domain-specific terms and jargon the speaker commonly uses "
+            f"(use these to infer correct words from similar-sounding "
+            f"transcription errors): {profile.vocabulary}."
+        )
+    if profile.language_style:
+        parts.append(f"Language style: {profile.language_style}.")
+
+    if not parts:
+        return ""
+
+    return "\nSpeaker profile context:\n" + " ".join(parts) + "\n"
+
+
+@dataclass
 class Config:
     general: GeneralConfig = field(default_factory=GeneralConfig)
     recording: RecordingConfig = field(default_factory=RecordingConfig)
@@ -90,6 +129,7 @@ class Config:
     translation: TranslationConfig = field(default_factory=TranslationConfig)
     keybinds: KeybindsConfig = field(default_factory=KeybindsConfig)
     injection: InjectionConfig = field(default_factory=InjectionConfig)
+    profile: ProfileConfig = field(default_factory=ProfileConfig)
 
 
 def _merge_dict(defaults: dict, overrides: dict) -> dict:
@@ -140,6 +180,7 @@ def load_config() -> Config:
         translation=TranslationConfig(**merged["translation"]),
         keybinds=KeybindsConfig(**merged["keybinds"]),
         injection=InjectionConfig(**merged["injection"]),
+        profile=ProfileConfig(**merged["profile"]),
     )
 
     return _resolve_config(config)

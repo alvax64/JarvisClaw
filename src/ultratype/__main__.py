@@ -32,6 +32,7 @@ def main() -> None:
     subparsers.add_parser("dictate", help="Start recording")
     subparsers.add_parser("stop", help="Stop recording, transcribe, and inject")
     subparsers.add_parser("translate", help="Stop recording, transcribe, translate, and inject")
+    subparsers.add_parser("reload", help="Reload daemon config from disk")
 
     # status
     sub_status = subparsers.add_parser("status", help="Print current state")
@@ -74,7 +75,7 @@ def main() -> None:
             from ultratype.daemon import run_daemon
             asyncio.run(run_daemon())
 
-        case "dictate" | "stop" | "translate":
+        case "dictate" | "stop" | "translate" | "reload":
             from ultratype.daemon import send_command
             response = asyncio.run(send_command(args.command))
             if "error" in response:
@@ -133,7 +134,8 @@ def _handle_config(args: argparse.Namespace) -> None:
             # Reconstruct and save
             from ultratype.config import (
                 GeneralConfig, RecordingConfig, WhisperConfig,
-                LLMConfig, TranslationConfig, KeybindsConfig, InjectionConfig, Config,
+                LLMConfig, TranslationConfig, KeybindsConfig, InjectionConfig,
+                ProfileConfig, Config,
             )
             new_config = Config(
                 general=GeneralConfig(**data["general"]),
@@ -143,6 +145,7 @@ def _handle_config(args: argparse.Namespace) -> None:
                 translation=TranslationConfig(**data["translation"]),
                 keybinds=KeybindsConfig(**data["keybinds"]),
                 injection=InjectionConfig(**data["injection"]),
+                profile=ProfileConfig(**data["profile"]),
             )
             save_config(new_config)
             print(f"Set {args.key} = {args.value}")

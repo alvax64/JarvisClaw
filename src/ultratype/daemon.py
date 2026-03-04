@@ -191,7 +191,7 @@ class Daemon:
             # LLM post-processing
             if self._config.llm.api_key or os.environ.get("ULTRATYPE_API_KEY"):
                 try:
-                    async with LLMClient(self._config.llm) as llm:
+                    async with LLMClient(self._config.llm, self._config.profile) as llm:
                         text = await llm.post_process(text)
                         if translate:
                             text = await llm.translate(

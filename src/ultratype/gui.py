@@ -18,6 +18,7 @@ from ultratype.config import (
     InjectionConfig,
     KeybindsConfig,
     LLMConfig,
+    ProfileConfig,
     RecordingConfig,
     TranslationConfig,
     WhisperConfig,
@@ -99,6 +100,19 @@ class SettingsWindow(Adw.ApplicationWindow):
                         self._config.keybinds.backend)
         page.add(grp)
 
+        # -- Profile --
+        grp = Adw.PreferencesGroup(
+            title="Profile",
+            description="Help the LLM understand your speech context for better corrections",
+        )
+        self._add_entry(grp, "profile.description", "Description",
+                        self._config.profile.description)
+        self._add_entry(grp, "profile.vocabulary", "Vocabulary",
+                        self._config.profile.vocabulary)
+        self._add_entry(grp, "profile.language_style", "Language Style",
+                        self._config.profile.language_style)
+        page.add(grp)
+
         # -- Save button --
         btn_grp = Adw.PreferencesGroup()
         save_btn = Gtk.Button(label="Save", css_classes=["suggested-action"])
@@ -157,6 +171,7 @@ class SettingsWindow(Adw.ApplicationWindow):
             translation=TranslationConfig(**data["translation"]),
             keybinds=KeybindsConfig(**data["keybinds"]),
             injection=InjectionConfig(**data["injection"]),
+            profile=ProfileConfig(**data["profile"]),
         )
         save_config(config)
 

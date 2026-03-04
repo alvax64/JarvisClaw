@@ -7,7 +7,7 @@ from typing import Any
 
 import httpx
 
-from ultratype.config import LLMConfig, TranslationConfig
+from ultratype.config import LLMConfig, ProfileConfig, TranslationConfig, build_profile_context
 
 # Provider endpoint defaults
 _PROVIDER_ENDPOINTS: dict[str, str] = {
@@ -21,8 +21,9 @@ _PROVIDER_ENDPOINTS: dict[str, str] = {
 class LLMClient:
     """Async LLM client supporting multiple providers."""
 
-    def __init__(self, config: LLMConfig) -> None:
+    def __init__(self, config: LLMConfig, profile: ProfileConfig | None = None) -> None:
         self._config = config
+        self._profile = profile or ProfileConfig()
         self._api_key = config.api_key or os.environ.get("ULTRATYPE_API_KEY", "")
         self._endpoint = config.endpoint or _PROVIDER_ENDPOINTS.get(config.provider, "")
         self._client: httpx.AsyncClient | None = None
@@ -37,7 +38,10 @@ class LLMClient:
 
     async def post_process(self, text: str) -> str:
         """Apply correction prompt to transcribed text."""
-        return await self._complete(self._config.correction_prompt, text)
+        prompt = self._config.correction_prompt.format(
+            profile_context=build_profile_context(self._profile),
+        )
+        return await self._complete(prompt, text)
 
     async def translate(
         self, text: str, translation_config: TranslationConfig
@@ -46,6 +50,7 @@ class LLMClient:
         prompt = self._config.translation_prompt.format(
             source_language=translation_config.source_language,
             target_language=translation_config.target_language,
+            profile_context=build_profile_context(self._profile),
         )
         return await self._complete(prompt, text)
 
