@@ -1,0 +1,20 @@
+[Unit]
+Description=UltraType Jarvis Voice Assistant
+Documentation=https://github.com/alvax64/ultratype
+After=graphical-session.target pipewire.service
+Wants=pipewire.service
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/ultratype jarvis
+Restart=on-failure
+RestartSec=5
+
+# Wayland/Hyprland needs these
+Environment=XDG_RUNTIME_DIR=/run/user/%U
+# Pass through the user's environment for API keys, PATH, etc.
+PassEnvironment=DISPLAY WAYLAND_DISPLAY HYPRLAND_INSTANCE_SIGNATURE XDG_RUNTIME_DIR HOME PATH ULTRATYPE_ELEVENLABS_KEY ANTHROPIC_API_KEY
+
+[Install]
+WantedBy=graphical-session.target
