@@ -52,3 +52,14 @@ async def notify_state_change(state: State, message: str = "") -> None:
                 await notify("Done", message)
         case State.ERROR:
             await notify("Error", message or "Unknown error", urgency="critical")
+        # Jarvis states
+        case State.LISTENING:
+            await notify("Jarvis", "Listening...", urgency="low")
+        case State.TRANSCRIBING:
+            await notify("Jarvis", "Transcribing...", urgency="low")
+        case State.THINKING:
+            await notify("Jarvis", "Thinking...", urgency="low")
+        case State.SPEAKING:
+            await notify("Jarvis", "Speaking...", urgency="low")
+        case State.AWAITING:
+            await notify("Jarvis", message or "Waiting for response...", urgency="low")
