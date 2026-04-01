@@ -58,6 +58,29 @@ def main() -> None:
     # settings (GUI)
     subparsers.add_parser("settings", help="Open settings GUI")
 
+    # jarvis
+    subparsers.add_parser("jarvis", help="Start the Jarvis voice assistant daemon")
+    subparsers.add_parser("jarvis-activate", help="Activate Jarvis (start listening)")
+    subparsers.add_parser("jarvis-stop", help="Stop Jarvis speaking/processing")
+    subparsers.add_parser("jarvis-show", help="Open Claude Code console for current session")
+    subparsers.add_parser("jarvis-reset", help="Reset Jarvis conversation session")
+    subparsers.add_parser("jarvis-screenshot", help="Take a screenshot via Jarvis")
+    subparsers.add_parser("jarvis-status", help="Get Jarvis status with session info")
+    subparsers.add_parser("jarvis-listen-on", help="Enable always-on wake word listener")
+    subparsers.add_parser("jarvis-listen-off", help="Disable wake word listener")
+    subparsers.add_parser("jarvis-listen-status", help="Check if wake word listener is active")
+
+    # whatsapp
+    wa_send = subparsers.add_parser("wa-send", help="Send WhatsApp message by contact name")
+    wa_send.add_argument("name", help="Contact name or alias")
+    wa_send.add_argument("text", help="Message text")
+    wa_send_num = subparsers.add_parser("wa-send-number", help="Send WhatsApp message by phone")
+    wa_send_num.add_argument("phone", help="Phone number with country code")
+    wa_send_num.add_argument("text", help="Message text")
+    wa_search = subparsers.add_parser("wa-search", help="Search WhatsApp contacts")
+    wa_search.add_argument("query", help="Search term")
+    subparsers.add_parser("wa-status", help="WhatsApp connection status")
+
     args = parser.parse_args()
 
     # Logging
@@ -98,6 +121,83 @@ def main() -> None:
             from ultratype.gui import run_gui
             run_gui()
 
+        case "jarvis":
+            from ultratype.jarvis.daemon import run_jarvis_daemon
+            asyncio.run(run_jarvis_daemon())
+
+        case "jarvis-activate" | "jarvis-stop" | "jarvis-show" | "jarvis-reset" | "jarvis-screenshot" | "jarvis-status" | "jarvis-listen-on" | "jarvis-listen-off" | "jarvis-listen-status":
+            from ultratype.jarvis.daemon import send_jarvis_command
+            cmd_map = {
+                "jarvis-activate": "activate",
+                "jarvis-stop": "stop",
+                "jarvis-show": "show",
+                "jarvis-reset": "reset",
+                "jarvis-screenshot": "screenshot",
+                "jarvis-status": "status",
+                "jarvis-listen-on": "listen-on",
+                "jarvis-listen-off": "listen-off",
+                "jarvis-listen-status": "listen-status",
+            }
+            cmd = cmd_map[args.command]
+            response = asyncio.run(send_jarvis_command(cmd))
+            if "error" in response:
+                print(f"Error: {response['error']}", file=sys.stderr)
+                sys.exit(1)
+            else:
+                print(json.dumps(response, indent=2))
+
+        case "wa-send":
+            from ultratype.jarvis.whatsapp import WhatsAppService
+            async def _wa_send():
+                wa = WhatsAppService()
+                await wa.start()
+                r = await wa.send(args.name, args.text)
+                await wa.stop()
+                return r
+            response = asyncio.run(_wa_send())
+            if response.get("ok"):
+                print(f"Sent to {response.get('contact', args.name)}")
+            else:
+                print(f"Error: {response.get('error', 'unknown')}", file=sys.stderr)
+                sys.exit(1)
+
+        case "wa-send-number":
+            from ultratype.jarvis.whatsapp import WhatsAppService
+            async def _wa_send_num():
+                wa = WhatsAppService()
+                await wa.start()
+                r = await wa.send_number(args.phone, args.text)
+                await wa.stop()
+                return r
+            response = asyncio.run(_wa_send_num())
+            if response.get("ok"):
+                print(f"Sent to {response.get('to', args.phone)}")
+            else:
+                print(f"Error: {response.get('error', 'unknown')}", file=sys.stderr)
+                sys.exit(1)
+
+        case "wa-search":
+            from ultratype.jarvis.whatsapp import WhatsAppService
+            async def _wa_search():
+                wa = WhatsAppService()
+                await wa.start()
+                r = await wa.search(args.query)
+                await wa.stop()
+                return r
+            response = asyncio.run(_wa_search())
+            print(json.dumps(response, indent=2, ensure_ascii=False))
+
+        case "wa-status":
+            from ultratype.jarvis.whatsapp import WhatsAppService
+            async def _wa_status():
+                wa = WhatsAppService()
+                await wa.start()
+                r = await wa.status()
+                await wa.stop()
+                return r
+            response = asyncio.run(_wa_status())
+            print(json.dumps(response, indent=2))
+
 
 def _handle_config(args: argparse.Namespace) -> None:
     from ultratype.config import CONFIG_PATH, load_config, save_config
@@ -135,7 +235,7 @@ def _handle_config(args: argparse.Namespace) -> None:
             from ultratype.config import (
                 GeneralConfig, RecordingConfig, WhisperConfig,
                 LLMConfig, TranslationConfig, KeybindsConfig, InjectionConfig,
-                ProfileConfig, Config,
+                ProfileConfig, JarvisConfig, Config,
             )
             new_config = Config(
                 general=GeneralConfig(**data["general"]),
@@ -146,6 +246,7 @@ def _handle_config(args: argparse.Namespace) -> None:
                 keybinds=KeybindsConfig(**data["keybinds"]),
                 injection=InjectionConfig(**data["injection"]),
                 profile=ProfileConfig(**data["profile"]),
+                jarvis=JarvisConfig(**data["jarvis"]),
             )
             save_config(new_config)
             print(f"Set {args.key} = {args.value}")

@@ -16,6 +16,12 @@ class State(enum.Enum):
     RECORDING = "recording"
     PROCESSING = "processing"
     ERROR = "error"
+    # Jarvis-specific states
+    LISTENING = "listening"
+    TRANSCRIBING = "transcribing"
+    THINKING = "thinking"
+    SPEAKING = "speaking"
+    AWAITING = "awaiting"
 
 
 class StateManager:

@@ -8,10 +8,16 @@ import json
 from ultratype.state import STATE_FILE, State
 
 _ICONS = {
-    State.IDLE: "\uf130",        #
-    State.RECORDING: "\uf111",   #
-    State.PROCESSING: "\uf013",  #
-    State.ERROR: "\uf071",       #
+    State.IDLE: "\uf130",          #  mic
+    State.RECORDING: "\uf111",     #  record
+    State.PROCESSING: "\uf013",    #  gear
+    State.ERROR: "\uf071",         #  warning
+    # Jarvis states
+    State.LISTENING: "\uf130",     #  mic (listening)
+    State.TRANSCRIBING: "\uf013",  #  gear (transcribing)
+    State.THINKING: "\uf11e",      #  brain/robot (thinking) -- using gamepad as placeholder
+    State.SPEAKING: "\uf028",      #  volume-up (speaking)
+    State.AWAITING: "\uf017",      #  clock (awaiting)
 }
 
 
