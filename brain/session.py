@@ -16,6 +16,7 @@ import sys
 import time
 
 from livekit.agents import Agent, AgentSession
+from livekit.plugins import silero
 
 from brain.config import Config
 from brain.memory import Memory
@@ -73,8 +74,11 @@ class JarvisSession:
             if context:
                 prompt += f"\n\n{context}"
 
+        vad = silero.VAD.load()
+
         agent = Agent(
             instructions=prompt,
+            vad=vad,
             stt=stt,
             llm=llm,
             tts=tts,
