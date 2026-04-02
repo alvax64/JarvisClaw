@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "jarvis-brain"
+version = "0.1.0"
+description = "Voice pipeline for Jarvis — PipeWire + LiveKit Agents SDK"
+requires-python = ">=3.12"
+
+dependencies = [
+    "livekit-agents>=1.4",
+    "livekit-plugins-openai>=1.0",
+    "livekit-plugins-silero>=1.0",
+]
+
+[project.scripts]
+jarvis-brain = "brain.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["brain"]
