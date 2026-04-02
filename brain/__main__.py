@@ -3,6 +3,7 @@
 Usage:
     jarvis-listen | jarvis-brain
     jarvis-listen | python -m brain
+    jarvis-brain --init          # create default config file
 """
 
 import argparse
@@ -10,6 +11,7 @@ import asyncio
 import logging
 import sys
 
+from brain.config import load_config, ensure_config_dir
 from brain.session import run_triggered
 
 
@@ -18,12 +20,7 @@ def main() -> None:
         prog="jarvis-brain",
         description="Voice pipeline — reads CLAP triggers from stdin",
     )
-    p.add_argument("--device-in", type=str, default=None, help="PipeWire input source")
-    p.add_argument("--device-out", type=str, default=None, help="PipeWire output sink")
-    p.add_argument("--llm-model", type=str, default="gpt-4o-mini")
-    p.add_argument("--stt-model", type=str, default="gpt-4o-mini-transcribe")
-    p.add_argument("--tts-model", type=str, default="tts-1")
-    p.add_argument("--tts-voice", type=str, default="onyx")
+    p.add_argument("--init", action="store_true", help="Create default config and exit")
     p.add_argument("-v", "--verbose", action="store_true")
 
     args = p.parse_args()
@@ -36,14 +33,13 @@ def main() -> None:
         stream=sys.stderr,
     )
 
-    asyncio.run(run_triggered(
-        device_in=args.device_in,
-        device_out=args.device_out,
-        llm_model=args.llm_model,
-        stt_model=args.stt_model,
-        tts_model=args.tts_model,
-        tts_voice=args.tts_voice,
-    ))
+    if args.init:
+        path = ensure_config_dir()
+        print(f"Config created at {path}/config.toml")
+        return
+
+    cfg = load_config()
+    asyncio.run(run_triggered(cfg))
 
 
 if __name__ == "__main__":

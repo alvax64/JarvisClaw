@@ -5,11 +5,12 @@ Requires=pipewire.service
 
 [Service]
 Type=simple
-# Unix pipe: clap detector → voice pipeline
 ExecStart=/bin/sh -c '%h/JarvisClaw/daemon/target/release/jarvis-listen --threshold 3000 | %h/JarvisClaw/.venv/bin/jarvis-brain'
-Environment=OPENAI_API_KEY=
 Restart=on-failure
 RestartSec=2
+
+# Config in ~/.config/jarvis/config.toml (API keys, models, devices)
+# Create default: jarvis-brain --init
 
 NoNewPrivileges=true
 ProtectSystem=strict

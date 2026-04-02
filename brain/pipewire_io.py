@@ -86,7 +86,11 @@ class PipeWireInput(AudioInput):
         try:
             data = await self._proc.stdout.readexactly(FRAME_BYTES)
         except (asyncio.IncompleteReadError, ConnectionError):
-            raise StopAsyncIteration
+            # pw-cat died — restart it, yield silence this frame
+            log.warning("pw-cat died, restarting")
+            self._proc = None
+            await self._ensure_started()
+            data = _SILENCE
 
         # Gate: if closed, replace with silence so VAD stays quiet
         if not self._gate_open:
@@ -158,8 +162,15 @@ class PipeWireOutput(AudioOutput):
             self._samples_written = 0
             self.on_playback_started(created_at=self._playback_start)
 
-        self._proc.stdin.write(bytes(frame.data))
-        self._proc.stdin.flush()
+        try:
+            self._proc.stdin.write(bytes(frame.data))
+            self._proc.stdin.flush()
+        except (BrokenPipeError, OSError):
+            log.warning("paplay died, restarting")
+            self._proc = None
+            self._ensure_started()
+            self._proc.stdin.write(bytes(frame.data))
+            self._proc.stdin.flush()
         self._samples_written += frame.samples_per_channel
 
     def flush(self) -> None:
