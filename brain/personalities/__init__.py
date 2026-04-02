@@ -39,13 +39,13 @@ def load_profile(profile_id: str) -> PersonalityProfile:
 
     merged = _deep_merge(defaults, data)
 
-    # Fix milestone keys (YAML parses them as int)
+    # YAML parses milestone keys as int, ensure consistency
     if "catchphrases" in merged and "milestone" in merged.get("catchphrases", {}):
         merged["catchphrases"]["milestone"] = {
             int(k): v for k, v in merged["catchphrases"]["milestone"].items()
         }
 
-    # Remove keys not in PersonalityProfile
+    # Drop keys not in PersonalityProfile
     valid = {f.name for f in PersonalityProfile.__dataclass_fields__.values()}
     cleaned = {k: v for k, v in merged.items() if k in valid}
 

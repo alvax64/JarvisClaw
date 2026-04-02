@@ -1,16 +1,14 @@
 """PersonalityProfile — data contract for VarietyEngine personalities.
 
-Recycled from nebu/agent/src/personality.py. Stripped LiveKit-specific
-fields, kept the engine contract intact.
+Recycled from nebu. Stripped to what Jarvis actually uses.
 """
 
-from collections.abc import Callable
 from dataclasses import dataclass, field
 
 
 @dataclass
 class PersonalityProfile:
-    """All cultural/behavioral data for a personality."""
+    """Behavioral data for a personality. Loaded from YAML."""
 
     # Identity
     id: str
@@ -22,21 +20,17 @@ class PersonalityProfile:
     default_mood: str = "neutral"
     mood_transitions: dict[str, list[str]] = field(default_factory=dict)
 
-    # Rapport levels: [{"name": "...", "value": "...", "threshold": 0, "flavor": "..."}]
+    # Rapport: [{"name": "...", "value": "...", "threshold": 0, "flavor": "..."}]
     rapport_levels: list[dict] = field(default_factory=list)
 
     # Catchphrases: {"pre": [...], "post": [...], "chaining": [...]}
     catchphrases: dict = field(default_factory=dict)
 
-    # Delivery & narrative
+    # Delivery and narrative
     delivery_styles: list[str] = field(default_factory=list)
     narrative_patterns: list[str] = field(default_factory=list)
     pattern_instructions: dict[str, str] = field(default_factory=dict)
     imperfections: list[str] = field(default_factory=list)
-
-    # Content categories
-    fact_categories: list[dict] = field(default_factory=list)
-    category_specifics: dict[str, list[str]] = field(default_factory=dict)
 
     # Wildcards
     wildcard_events: list[dict] = field(default_factory=list)
@@ -49,12 +43,6 @@ class PersonalityProfile:
 
     # FSM signal-to-mood mapping
     signal_mood_map: dict[str, list[str] | None] = field(default_factory=dict)
-
-    # Labels
-    chain_label: str = "TOPIC LINK"
-    combo_flavor: str = "a roll"
-    favorite_mention: str = "'I see you like that!'"
-    personality_label: str = "helpful assistant"
 
     def get_mood_tone(self, mood_value: str) -> str:
         for m in self.moods:

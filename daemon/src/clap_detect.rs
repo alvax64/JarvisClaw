@@ -23,7 +23,7 @@ const NOISE_MULTIPLIER: f64 = 3.0;
 
 /// RMS energy of a 16-bit LE PCM frame. No heap allocation.
 #[inline]
-pub fn frame_rms(data: &[u8]) -> i16 {
+pub fn frame_rms(data: &[u8]) -> u16 {
     let n = data.len() / SAMPLE_WIDTH;
     if n == 0 {
         return 0;
@@ -33,27 +33,26 @@ pub fn frame_rms(data: &[u8]) -> i16 {
         let sample = i16::from_le_bytes([data[i * 2], data[i * 2 + 1]]) as i64;
         sum += sample * sample;
     }
-    ((sum / n as i64) as f64).sqrt() as i16
+    ((sum / n as i64) as f64).sqrt() as u16
 }
 
 pub struct ClapDetector {
-    threshold: i16,
+    threshold: u16,
     noise_floor: f64,
-    last_spike: Option<Instant>,
-    armed: bool, // saw first clap, waiting for second
-    last_trigger: Option<Instant>,
     cooldown: f64,
+    // first_spike == Some means armed (saw first clap, waiting for second)
+    first_spike: Option<Instant>,
+    last_trigger: Option<Instant>,
 }
 
 impl ClapDetector {
-    pub fn new(threshold: i16, cooldown: f64) -> Self {
+    pub fn new(threshold: u16, cooldown: f64) -> Self {
         Self {
             threshold,
             noise_floor: 200.0,
-            last_spike: None,
-            armed: false,
-            last_trigger: None,
             cooldown,
+            first_spike: None,
+            last_trigger: None,
         }
     }
 
@@ -81,38 +80,30 @@ impl ClapDetector {
             return false;
         }
 
-        // Got a spike
-        let Some(ref last) = self.last_spike else {
-            // Very first spike ever
-            self.armed = true;
-            self.last_spike = Some(now);
+        // Got a spike — check against first_spike state
+        let Some(ref first) = self.first_spike else {
+            // First spike — arm
+            self.first_spike = Some(now);
             return false;
         };
 
-        let gap = now.duration_since(*last).as_secs_f64();
-
-        if !self.armed {
-            self.armed = true;
-            self.last_spike = Some(now);
-            return false;
-        }
+        let gap = now.duration_since(*first).as_secs_f64();
 
         if gap < CLAP_MIN_GAP {
-            // Same noise event
-            self.last_spike = Some(now);
+            // Same noise event, update timestamp
+            self.first_spike = Some(now);
             return false;
         }
 
         if gap > CLAP_MAX_GAP {
-            // Too slow — new first clap
-            self.last_spike = Some(now);
+            // Too slow — reset, treat as new first clap
+            self.first_spike = Some(now);
             return false;
         }
 
         // Double clap confirmed
-        self.armed = false;
+        self.first_spike = None;
         self.last_trigger = Some(now);
-        self.last_spike = None;
         true
     }
 
@@ -151,13 +142,8 @@ mod tests {
         let mut d = ClapDetector::new(3000, 1.5);
         let clap = make_frame(5000);
 
-        // First clap
         assert!(!d.feed(&clap));
-
-        // Wait ~200ms
         thread::sleep(Duration::from_millis(200));
-
-        // Second clap — should trigger
         assert!(d.feed(&clap));
 
         // Cooldown — should not trigger
@@ -170,11 +156,8 @@ mod tests {
         let clap = make_frame(5000);
 
         assert!(!d.feed(&clap));
-
-        // Wait past max gap
         thread::sleep(Duration::from_millis(600));
-
-        // New noise — treated as first clap of new pair, no trigger
+        // Past max gap — new first clap, no trigger
         assert!(!d.feed(&clap));
     }
 
@@ -185,5 +168,9 @@ mod tests {
 
         let frame = make_frame(0);
         assert_eq!(frame_rms(&frame), 0);
+
+        // Negative amplitude — RMS is always positive
+        let frame = make_frame(-1000);
+        assert_eq!(frame_rms(&frame), 1000);
     }
 }

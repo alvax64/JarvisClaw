@@ -1,14 +1,12 @@
 """Variety Engine — anti-repetition + personality state machine.
 
-Recycled from nebu/agent/src/variety.py. Core mechanics preserved:
+Recycled from nebu. Core mechanics:
 - Mood FSM with signal-reactive transitions
-- Memory tracker (deque-based anti-repetition)
-- Persona anchor re-injection
+- Deque-based anti-repetition tracker
+- Persona anchor re-injection every N turns
 - Narrative pattern dedup
 - Sliding summary compression
 - Imperfection injection (organic feel)
-
-Stripped: child-specific language, culture hype system, LiveKit deps.
 """
 
 import random
@@ -64,7 +62,7 @@ class VarietyEngine:
         if not self._mood_value:
             self._mood_value = self.profile.default_mood
 
-    # ── Mood ──────────────────────────────────────────────────────
+    # -- Mood --------------------------------------------------------
 
     @property
     def mood(self) -> str:
@@ -91,13 +89,13 @@ class VarietyEngine:
             self._mood_history.append(self._mood_value)
             self._mood_value = random.choice(options)
 
-    # ── Rapport ───────────────────────────────────────────────────
+    # -- Rapport -----------------------------------------------------
 
     @property
     def rapport(self) -> dict:
         return self.profile.get_rapport_by_turns(self.turn_count)
 
-    # ── Anti-repetition picks ─────────────────────────────────────
+    # -- Anti-repetition picks ---------------------------------------
 
     def _pick_unique(self, options: list, used: deque):
         available = [x for x in options if x not in used]
@@ -124,7 +122,7 @@ class VarietyEngine:
             return random.choice(self.profile.wildcard_events).get("inject", "")
         return None
 
-    # ── Patches ───────────────────────────────────────────────────
+    # -- Patches -----------------------------------------------------
 
     def build_persona_anchor(self) -> str:
         """Every 5 turns, re-inject condensed identity."""
@@ -151,8 +149,8 @@ class VarietyEngine:
         recent_patterns = list(self.memory.pattern_history)[-5:]
         return (
             f"\n[SUMMARY turns {self.turn_count - 10}-{self.turn_count}]: "
-            f"Topics covered: {', '.join(recent_topics)}. "
-            f"Patterns used: {', '.join(recent_patterns)}. "
+            f"Topics: {', '.join(recent_topics)}. "
+            f"Patterns: {', '.join(recent_patterns)}. "
             f"Mood: {self._mood_value}. "
             f"VARY: use different topics and patterns than those in the summary."
         )
@@ -168,7 +166,7 @@ class VarietyEngine:
         self._last_imperfection = True
         return random.choice(self.profile.imperfections)
 
-    # ── Time ──────────────────────────────────────────────────────
+    # -- Time --------------------------------------------------------
 
     def get_time_flavor(self, hour: int | None = None) -> str:
         if hour is None:
@@ -182,7 +180,7 @@ class VarietyEngine:
             return flavors.get("evening", "")
         return flavors.get("late_night", "")
 
-    # ── Turn management ───────────────────────────────────────────
+    # -- Turn management ---------------------------------------------
 
     def tick(self):
         self.turn_count += 1

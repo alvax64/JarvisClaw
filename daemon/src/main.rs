@@ -34,7 +34,7 @@ fn usage() {
 
 struct Args {
     watch: bool,
-    threshold: i16,
+    threshold: u16,
     device: Option<String>,
     cooldown: f64,
     verbose: bool,

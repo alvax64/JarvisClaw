@@ -1,4 +1,4 @@
-"""Jarvis tools — standalone functions, no LiveKit dependency."""
+"""Jarvis tools — standalone functions, no framework dependency."""
 
 from brain.tools.datetime_tool import get_current_datetime
 from brain.tools.weather_tool import get_weather
