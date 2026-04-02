@@ -79,12 +79,18 @@ class SessionConfig:
     )
 
 @dataclass
+class MemoryConfig:
+    enabled: bool = True
+    max_context_turns: int = 5
+
+@dataclass
 class Config:
     audio: AudioConfig = field(default_factory=AudioConfig)
     stt: STTConfig = field(default_factory=STTConfig)
     llm: LLMConfig = field(default_factory=LLMConfig)
     tts: TTSConfig = field(default_factory=TTSConfig)
     session: SessionConfig = field(default_factory=SessionConfig)
+    memory: MemoryConfig = field(default_factory=MemoryConfig)
 
 
 def load_config() -> Config:
@@ -138,6 +144,9 @@ def _apply_toml(cfg: Config, data: dict) -> None:
     for key, val in data.get("session", {}).items():
         if hasattr(cfg.session, key):
             setattr(cfg.session, key, val)
+    for key, val in data.get("memory", {}).items():
+        if hasattr(cfg.memory, key):
+            setattr(cfg.memory, key, val)
 
 
 def _apply_env(cfg: Config) -> None:
@@ -151,6 +160,7 @@ def _apply_env(cfg: Config) -> None:
     if v := _env("JARVIS_TTS_MODEL"): cfg.tts.model = v
     if v := _env("JARVIS_TTS_VOICE"): cfg.tts.voice = v
     if v := _env("JARVIS_INACTIVITY_TIMEOUT"): cfg.session.inactivity_timeout = float(v)
+    if v := _env("JARVIS_MEMORY_ENABLED"): cfg.memory.enabled = v.lower() in ("1", "true", "yes")
 
 
 _DEFAULT_TOML = """\
@@ -179,6 +189,10 @@ voice = "onyx"
 
 [session]
 inactivity_timeout = 8.0
+
+[memory]
+enabled = true
+max_context_turns = 5
 
 [keys]
 # openai = "sk-..."
