@@ -3,8 +3,8 @@
 //! Writes "CLAP\n" to stdout on double-clap detection. That's it.
 //! Compose with pipes:
 //!
-//!   jarvis-listen | while read line; do start-assistant; done
-//!   jarvis-listen | xargs -I{} notify-send "Jarvis" "Listening..."
+//!   jarvis-listen | while read ts event; do start-assistant; done
+//!   jarvis-listen | awk '{print strftime("%T",$1), $2}'
 //!   jarvis-listen --watch   # live RMS monitor, no detection
 //!
 //! Philosophy: do one thing, write to stdout, let the shell compose.
@@ -20,7 +20,7 @@ fn usage() {
         "Usage: jarvis-listen [OPTIONS]\n\
          \n\
          Detects double-clap patterns from PipeWire audio.\n\
-         Writes \"CLAP\" to stdout on each detection.\n\
+         Writes \"TIMESTAMP CLAP\" to stdout on each detection.\n\
          \n\
          Options:\n\
          \x20 --threshold N    RMS spike threshold (default: 3000)\n\

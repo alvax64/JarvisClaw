@@ -1,13 +1,14 @@
 //! PipeWire audio listener — spawns pw-cat, feeds ClapDetector.
 //!
 //! Output contract:
-//!   stdout — "CLAP\n" per detection (machine-readable, pipeable)
+//!   stdout — "TIMESTAMP CLAP\n" per detection (epoch seconds, pipeable)
 //!   stderr — diagnostics, only with --verbose or --watch
 
 use std::io::{self, Read, Write};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::SystemTime;
 
 use signal_hook::consts::{SIGINT, SIGTERM};
 use signal_hook::flag;
@@ -85,7 +86,11 @@ pub fn listen(threshold: u16, device: Option<&str>, cooldown: f64, verbose: bool
         }
 
         if detector.feed(&buf) {
-            let _ = out.write_all(b"CLAP\n");
+            let ts = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs_f64();
+            let _ = write!(out, "{ts:.3} CLAP\n");
             let _ = out.flush();
 
             if verbose {
