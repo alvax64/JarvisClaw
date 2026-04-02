@@ -1,7 +1,7 @@
 services:
   listener:
     build: ./daemon
-    command: ["--threshold", "3000", "-v"]
+    command: ["--threshold", "3000"]
     restart: unless-stopped
     volumes:
       - ${XDG_RUNTIME_DIR}/pipewire-0:${XDG_RUNTIME_DIR}/pipewire-0:ro
@@ -10,4 +10,8 @@ services:
     security_opt:
       - no-new-privileges:true
     read_only: true
-    # stdout = "CLAP\n" — pipe it to whatever you want
+    # stdout = "TIMESTAMP CLAP\n" — piped to brain
+
+  # Brain runs natively (needs PipeWire + paplay + local models).
+  # Use `make run` instead of docker for the full pipeline.
+  # This compose is for running the listener in isolation.

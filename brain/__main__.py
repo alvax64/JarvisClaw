@@ -9,12 +9,17 @@ Usage:
 import argparse
 import asyncio
 import logging
+import os
 import sys
+import warnings
 
 from brain.config import load_config, ensure_config_dir
 from brain.session import run_triggered
 
-# Libraries that spam DEBUG logs with raw bytes and HTTP internals
+# Suppress ONNX CUDA warning before any import touches onnxruntime
+os.environ.setdefault("ONNXRUNTIME_DISABLE_CUDA_PROVIDER", "1")
+warnings.filterwarnings("ignore", message=".*CUDAExecutionProvider.*")
+
 _NOISY_LOGGERS = [
     "openai",
     "httpx",
@@ -37,12 +42,7 @@ def main() -> None:
 
     args = p.parse_args()
 
-    if args.debug:
-        level = logging.DEBUG
-    elif args.verbose:
-        level = logging.INFO
-    else:
-        level = logging.INFO
+    level = logging.DEBUG if args.debug else logging.INFO
 
     logging.basicConfig(
         format="%(asctime)s %(levelname).1s %(name)s: %(message)s",
@@ -51,12 +51,10 @@ def main() -> None:
         stream=sys.stderr,
     )
 
-    # Silence noisy libraries unless -vv
     if not args.debug:
         for name in _NOISY_LOGGERS:
             logging.getLogger(name).setLevel(logging.WARNING)
 
-    # Always show our own logs
     logging.getLogger("brain").setLevel(level)
 
     if args.init:
@@ -65,7 +63,11 @@ def main() -> None:
         return
 
     cfg = load_config()
-    asyncio.run(run_triggered(cfg))
+
+    try:
+        asyncio.run(run_triggered(cfg))
+    except KeyboardInterrupt:
+        logging.getLogger("brain").info("Shutdown.")
 
 
 if __name__ == "__main__":
