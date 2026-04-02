@@ -20,7 +20,7 @@ TOML example (~/.config/jarvis/config.toml):
 
     [llm]
     provider = "openai"
-    model = "gpt-4o-mini"
+    model = "gpt-5.4-mini"
 
     [tts]
     provider = "elevenlabs,openai,piper"  # fallback chain, first that works wins
@@ -196,7 +196,7 @@ language = "es"
 
 [llm]
 provider = "openai"
-model = "gpt-4o-mini"
+model = "gpt-5.4-mini"
 
 [tts]
 provider = "openai"           # "elevenlabs,openai,piper" for fallback chain

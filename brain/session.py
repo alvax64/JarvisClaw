@@ -5,8 +5,9 @@ States:
     ACTIVE  → mic open, VAD listening, processing speech
     IDLE    ← timeout after last speech activity
 
-Providers selected via config: openai (cloud) or local (whisper/piper).
-Memory persists conversation turns to SQLite for cross-session context.
+SDK v1.5 architecture:
+    Agent       — holds instructions, tools, providers
+    AgentSession — runtime that connects Agent to audio I/O
 """
 
 import asyncio
@@ -14,8 +15,7 @@ import logging
 import sys
 import time
 
-from livekit.agents import AgentSession
-from livekit.plugins import silero
+from livekit.agents import Agent, AgentSession
 
 from brain.config import Config
 from brain.memory import Memory
@@ -34,6 +34,7 @@ class JarvisSession:
         self._pw_out = PipeWireOutput(device=cfg.audio.device_out)
         self._memory = Memory(max_context_turns=cfg.memory.max_context_turns)
         self._session: AgentSession | None = None
+        self._agent: Agent | None = None
         self._active = False
         self._last_activity: float = 0.0
         self._timer_task: asyncio.Task | None = None
@@ -52,32 +53,18 @@ class JarvisSession:
         else:
             self._wakeword = None
 
-    def _build_session(self) -> AgentSession:
+    def _build_agent(self) -> Agent:
+        """Build an Agent with instructions, tools, and providers."""
         from brain.tools import get_tools
 
         stt = build_stt(self._cfg)
         llm = build_llm(self._cfg)
         tts = build_tts(self._cfg)
-        vad = silero.VAD.load()
 
-        session = AgentSession(
-            stt=stt,
-            llm=llm,
-            tts=tts,
-            vad=vad,
-            turn_detection="vad",
-            allow_interruptions=True,
-            min_interruption_duration=0.5,
-        )
-
-        session.input.audio = self._pw_in
-        session.output.audio = self._pw_out
-
-        for tool in get_tools():
-            session.register_tool(tool)
+        tools = get_tools()
+        tool_names = [t.__name__ for t in tools]
 
         # Build system prompt with memory context
-        tool_names = [t.__name__ for t in get_tools()]
         prompt = self._cfg.session.system_prompt
         prompt += f"\n\nAvailable tools: {', '.join(tool_names)}."
 
@@ -86,18 +73,32 @@ class JarvisSession:
             if context:
                 prompt += f"\n\n{context}"
 
-        session.update_instructions(prompt)
+        agent = Agent(
+            instructions=prompt,
+            stt=stt,
+            llm=llm,
+            tts=tts,
+            tools=tools,
+            turn_detection="vad",
+            allow_interruptions=True,
+        )
 
-        # Track activity + capture turns for memory
-        session.on("user_input_transcribed", self._on_user_input)
-        session.on("conversation_item_added", self._on_assistant_response)
-
-        return session
+        return agent
 
     async def start(self) -> None:
         try:
-            self._session = self._build_session()
-            await self._session.start()
+            self._agent = self._build_agent()
+            self._session = AgentSession()
+
+            # Wire PipeWire audio
+            self._session.input.audio = self._pw_in
+            self._session.output.audio = self._pw_out
+
+            # Track activity from session events
+            self._session.on("user_input_transcribed", self._on_user_input)
+            self._session.on("conversation_item_added", self._on_assistant_response)
+
+            await self._session.start(self._agent)
             self._error_count = 0
             log.info(
                 "Session started (stt=%s, llm=%s, tts=%s, memory=%s)",
@@ -156,7 +157,6 @@ class JarvisSession:
     def _on_user_input(self, ev, *args, **kwargs) -> None:
         self._last_activity = time.monotonic()
         self._error_count = 0
-        # Capture for memory
         text = getattr(ev, "transcript", "") or getattr(ev, "text", "") or str(ev)
         if text:
             self._last_user_text = text
@@ -164,7 +164,6 @@ class JarvisSession:
 
     def _on_assistant_response(self, ev, *args, **kwargs) -> None:
         self._last_activity = time.monotonic()
-        # Capture for memory
         item = getattr(ev, "item", None)
         text = getattr(item, "text", "") if item else str(ev)
         if text:
@@ -191,6 +190,7 @@ class JarvisSession:
         if self._error_count >= 3:
             log.warning("Too many errors, rebuilding session")
             self._session = None
+            self._agent = None
             await asyncio.sleep(2)
             try:
                 await self.start()
