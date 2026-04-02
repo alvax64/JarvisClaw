@@ -113,19 +113,16 @@ def load_config() -> Config:
     # Env var overrides (JARVIS_LLM_MODEL, JARVIS_STT_LANGUAGE, etc.)
     _apply_env(cfg)
 
-    # Set API keys from config file if not already in env
+    # Config file keys OVERRIDE env vars — config is the source of truth
     if _CONFIG_FILE.exists():
         with open(_CONFIG_FILE, "rb") as f:
             keys = tomllib.load(f).get("keys", {})
-        _set_key_if_missing("OPENAI_API_KEY", keys.get("openai"))
-        _set_key_if_missing("ELEVEN_API_KEY", keys.get("elevenlabs"))
+        if keys.get("openai"):
+            os.environ["OPENAI_API_KEY"] = keys["openai"]
+        if keys.get("elevenlabs"):
+            os.environ["ELEVEN_API_KEY"] = keys["elevenlabs"]
 
     return cfg
-
-
-def _set_key_if_missing(env_var: str, value: str | None) -> None:
-    if value and not os.environ.get(env_var):
-        os.environ[env_var] = value
 
 
 def ensure_config_dir() -> Path:
