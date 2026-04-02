@@ -23,9 +23,9 @@ TOML example (~/.config/jarvis/config.toml):
     model = "gpt-4o-mini"
 
     [tts]
-    provider = "openai"       # "openai" or "piper"
-    model = "tts-1"
-    voice = "onyx"
+    provider = "elevenlabs,openai,piper"  # fallback chain, first that works wins
+    model = "eleven_multilingual_v2"      # elevenlabs model (or "tts-1" for openai)
+    voice = "your-voice-id"               # elevenlabs voice_id (or "onyx" for openai)
 
     [session]
     inactivity_timeout = 8.0
@@ -33,6 +33,7 @@ TOML example (~/.config/jarvis/config.toml):
 
     [keys]
     openai = "sk-..."
+    # elevenlabs = "..."
 """
 
 import os
@@ -106,18 +107,19 @@ def load_config() -> Config:
     # Env var overrides (JARVIS_LLM_MODEL, JARVIS_STT_LANGUAGE, etc.)
     _apply_env(cfg)
 
-    # Set API keys from config or env
-    openai_key = os.environ.get("OPENAI_API_KEY")
-    if not openai_key:
-        # Try config file
-        if _CONFIG_FILE.exists():
-            with open(_CONFIG_FILE, "rb") as f:
-                data = tomllib.load(f)
-            key_from_toml = data.get("keys", {}).get("openai")
-            if key_from_toml:
-                os.environ["OPENAI_API_KEY"] = key_from_toml
+    # Set API keys from config file if not already in env
+    if _CONFIG_FILE.exists():
+        with open(_CONFIG_FILE, "rb") as f:
+            keys = tomllib.load(f).get("keys", {})
+        _set_key_if_missing("OPENAI_API_KEY", keys.get("openai"))
+        _set_key_if_missing("ELEVEN_API_KEY", keys.get("elevenlabs"))
 
     return cfg
+
+
+def _set_key_if_missing(env_var: str, value: str | None) -> None:
+    if value and not os.environ.get(env_var):
+        os.environ[env_var] = value
 
 
 def ensure_config_dir() -> Path:
@@ -166,6 +168,9 @@ def _apply_env(cfg: Config) -> None:
 _DEFAULT_TOML = """\
 # Jarvis configuration
 # See: https://github.com/alvax64/JarvisClaw
+#
+# Providers are comma-separated fallback chains.
+# First that works wins. Example: "elevenlabs,openai,piper"
 
 [audio]
 # device_in = "default"
@@ -174,7 +179,7 @@ clap_threshold = 3000
 clap_cooldown = 1.5
 
 [stt]
-provider = "openai"
+provider = "openai"           # "openai" or "whisper" (local)
 model = "gpt-4o-mini-transcribe"
 language = "es"
 
@@ -183,9 +188,9 @@ provider = "openai"
 model = "gpt-4o-mini"
 
 [tts]
-provider = "openai"
-model = "tts-1"
-voice = "onyx"
+provider = "openai"           # "elevenlabs,openai,piper" for fallback chain
+model = "tts-1"               # elevenlabs: "eleven_multilingual_v2"
+voice = "onyx"                # elevenlabs: voice_id from your account
 
 [session]
 inactivity_timeout = 8.0
@@ -196,4 +201,5 @@ max_context_turns = 5
 
 [keys]
 # openai = "sk-..."
+# elevenlabs = "..."
 """
