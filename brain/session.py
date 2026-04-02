@@ -41,6 +41,17 @@ class JarvisSession:
         self._last_user_text: str = ""
         self._last_assistant_text: str = ""
 
+        # Wake word detection while idle
+        if cfg.wakeword.enabled:
+            from brain.wakeword import WakeWordDetector
+            self._wakeword = WakeWordDetector(
+                threshold=cfg.wakeword.threshold,
+                on_detected=self.activate,
+            )
+            self._pw_in.set_wakeword(self._wakeword)
+        else:
+            self._wakeword = None
+
     def _build_session(self) -> AgentSession:
         from brain.tools import get_tools
 

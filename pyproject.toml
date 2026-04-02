@@ -16,13 +16,16 @@ dependencies = [
 
 [project.optional-dependencies]
 local = [
-    "faster-whisper>=1.0",            # Local STT (whisper.cpp via ctranslate2)
+    "faster-whisper>=1.0",            # Local STT
 ]
 elevenlabs = [
     "livekit-plugins-elevenlabs>=1.0",
 ]
+wakeword = [
+    "openwakeword>=0.4",
+]
 all = [
-    "jarvis-brain[local,elevenlabs]",
+    "jarvis-brain[local,elevenlabs,wakeword]",
 ]
 
 [project.scripts]

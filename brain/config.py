@@ -85,6 +85,11 @@ class MemoryConfig:
     max_context_turns: int = 5
 
 @dataclass
+class WakeWordConfig:
+    enabled: bool = True
+    threshold: float = 0.5  # 0.0-1.0, higher = fewer false positives
+
+@dataclass
 class Config:
     audio: AudioConfig = field(default_factory=AudioConfig)
     stt: STTConfig = field(default_factory=STTConfig)
@@ -92,6 +97,7 @@ class Config:
     tts: TTSConfig = field(default_factory=TTSConfig)
     session: SessionConfig = field(default_factory=SessionConfig)
     memory: MemoryConfig = field(default_factory=MemoryConfig)
+    wakeword: WakeWordConfig = field(default_factory=WakeWordConfig)
 
 
 def load_config() -> Config:
@@ -149,6 +155,9 @@ def _apply_toml(cfg: Config, data: dict) -> None:
     for key, val in data.get("memory", {}).items():
         if hasattr(cfg.memory, key):
             setattr(cfg.memory, key, val)
+    for key, val in data.get("wakeword", {}).items():
+        if hasattr(cfg.wakeword, key):
+            setattr(cfg.wakeword, key, val)
 
 
 def _apply_env(cfg: Config) -> None:
@@ -163,6 +172,8 @@ def _apply_env(cfg: Config) -> None:
     if v := _env("JARVIS_TTS_VOICE"): cfg.tts.voice = v
     if v := _env("JARVIS_INACTIVITY_TIMEOUT"): cfg.session.inactivity_timeout = float(v)
     if v := _env("JARVIS_MEMORY_ENABLED"): cfg.memory.enabled = v.lower() in ("1", "true", "yes")
+    if v := _env("JARVIS_WAKEWORD_ENABLED"): cfg.wakeword.enabled = v.lower() in ("1", "true", "yes")
+    if v := _env("JARVIS_WAKEWORD_THRESHOLD"): cfg.wakeword.threshold = float(v)
 
 
 _DEFAULT_TOML = """\
@@ -198,6 +209,10 @@ inactivity_timeout = 8.0
 [memory]
 enabled = true
 max_context_turns = 5
+
+[wakeword]
+enabled = true                # "Hey Jarvis" detection while idle
+threshold = 0.5               # 0.0-1.0, higher = fewer false positives
 
 [keys]
 # openai = "sk-..."

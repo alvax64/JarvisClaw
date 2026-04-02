@@ -35,6 +35,9 @@ class PipeWireInput(AudioInput):
     Supports gating: when gated (default), yields silence so the
     AgentSession stays alive but VAD won't trigger. Call open_gate()
     to let real audio through, close_gate() to go silent.
+
+    When gated, real audio is still read and fed to the wake word
+    detector (if set). This enables "Hey Jarvis" detection while idle.
     """
 
     def __init__(self, *, device: str | None = None) -> None:
@@ -42,6 +45,7 @@ class PipeWireInput(AudioInput):
         self._device = device
         self._proc: asyncio.subprocess.Process | None = None
         self._gate_open = False
+        self._wakeword = None  # set via set_wakeword()
 
     @property
     def is_active(self) -> bool:
@@ -53,7 +57,13 @@ class PipeWireInput(AudioInput):
 
     def close_gate(self) -> None:
         self._gate_open = False
+        if self._wakeword:
+            self._wakeword.reset()
         log.debug("Audio gate closed")
+
+    def set_wakeword(self, detector) -> None:
+        """Attach a WakeWordDetector — fed while gate is closed."""
+        self._wakeword = detector
 
     async def _ensure_started(self) -> None:
         if self._proc is not None and self._proc.returncode is None:
@@ -92,8 +102,10 @@ class PipeWireInput(AudioInput):
             await self._ensure_started()
             data = _SILENCE
 
-        # Gate: if closed, replace with silence so VAD stays quiet
+        # Gate: if closed, feed wake word detector, yield silence to VAD
         if not self._gate_open:
+            if self._wakeword:
+                self._wakeword.feed(data)
             data = _SILENCE
 
         return rtc.AudioFrame(
