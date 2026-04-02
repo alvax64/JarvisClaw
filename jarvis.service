@@ -1,0 +1,20 @@
+[Unit]
+Description=Jarvis clap listener
+After=pipewire.service
+Requires=pipewire.service
+
+[Service]
+Type=simple
+# Unix philosophy: listener writes to stdout, shell dispatches
+ExecStart=/bin/sh -c '%h/JarvisClaw/daemon/target/release/jarvis-listen --threshold 3000 | while read line; do %h/JarvisClaw/on_trigger.sh; done'
+Restart=on-failure
+RestartSec=2
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+SupplementaryGroups=audio
+
+[Install]
+WantedBy=default.target

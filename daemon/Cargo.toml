@@ -1,0 +1,13 @@
+[package]
+name = "jarvis-listen"
+version = "0.1.0"
+edition = "2024"
+description = "Always-on clap-triggered voice assistant daemon"
+
+[dependencies]
+signal-hook = "0.3"
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true

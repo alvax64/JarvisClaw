@@ -1,0 +1,13 @@
+services:
+  listener:
+    build: ./daemon
+    command: ["--threshold", "3000", "-v"]
+    restart: unless-stopped
+    volumes:
+      - ${XDG_RUNTIME_DIR}/pipewire-0:${XDG_RUNTIME_DIR}/pipewire-0:ro
+    environment:
+      - XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR}
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    # stdout = "CLAP\n" — pipe it to whatever you want
